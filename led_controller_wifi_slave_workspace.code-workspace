@@ -3,6 +3,9 @@
 		{
 			"name": "led_controller_wifi_salve",
 			"path": "."
+		},
+		{
+			"path": "H:\\"
 		}
 	],
 	"launch": {
