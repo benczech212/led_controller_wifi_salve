@@ -4,30 +4,15 @@ import neopixel
 
 DEBUG_LEVEL = 3
 
-SETTINGS = [{"name":"Segment 1",
-    "pixel_min":0,
-    "pixel_max":29,
-    "brightness":1.0,
-    "data_pin":board.D7,
-    "clock_pin":None,
-    "color_channels":["Green","Red","Blue","White"],
-    "color_channel_multiplier":[1,1,1,1],
-    "auto_write":False,
-    "pixel_order":neopixel.GRBW,
-    "is_enabled":True,
-    "color":[0,0,0,0],
-    "color_target":[0,0,0,0],
-    "color_vel":[1,1,1,1]
 
-    }]
 class LED_Driver:
     drivers = []
     count = 0
-    def __init__(self):
+    def __init__(self,settings):
         LED_Driver.drivers.append(self)
         self.id = self.count
         LED_Driver.count += 1
-        self.segments = [self.init_segment(SETTINGS[0])]
+        self.segments = [self.init_segment(settings)]
         self.brightness = 1.0
         self.is_enabled = True
     def init_segment(self,settings):
@@ -57,7 +42,7 @@ class LED_Segment:
         self.color_channel_multiplier= settings['color_channel_multiplier']
         self.auto_write = settings['auto_write']
         self.pixel_order = settings['pixel_order']
-        self.segment = self.init_neopixels(self.data_pin,self.pixel_range,self.brightness,self.auto_write,self.pixel_order)
+        self.neopixels = self.init_neopixels(self.data_pin,self.pixel_range,self.brightness,self.auto_write,self.pixel_order)
         self.is_enabled = settings['is_enabled']
         self.tick_count = 0
         self.pixels = []
@@ -79,14 +64,12 @@ class LED_Segment:
         if self.is_enabled:
             for i, pixel in enumerate(self.pixels):
                 color = pixel.get_neopixel_color()
-                self.segment[i] = color
-            self.segment.show()
+                self.neopixels[i] = color
+            self.neopixels.show()
         else:
-            self.segment.fill(0)
-            self.segment.show()
-    def test_effect(self):
-        for pixel in pixels:
-            pixel.color_
+            self.neopixels.fill(0)
+            self.neopixels.show()
+
 
 
 class Pixel:
@@ -147,23 +130,3 @@ def wheel(pos):
     return (r, g, b, 0)
 
 
-
-TICK_COUNT = 0
-def main_loop():
-    global TICK_COUNT
-    TICK_COUNT+=1 
-    DRIVER.tick()
-    DRIVER.draw()
-    for i, pixel in enumerate(DRIVER.segments[0].pixels):
-        segment_offset = i // pixel.segment.pixel_max
-        color_spread = 5
-        frame_modifier = TICK_COUNT * 4
-        new_hue = (segment_offset * 4) + (color_spread * i) + (frame_modifier)
-        new_color = wheel(new_hue)
-        pixel.color_target = new_color
-
-
-DRIVER = LED_Driver()
-
-while __name__ == "__main__":
-    main_loop()
