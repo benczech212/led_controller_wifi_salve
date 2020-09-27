@@ -12,7 +12,9 @@ class LED_Driver:
         LED_Driver.drivers.append(self)
         self.id = self.count
         LED_Driver.count += 1
-        self.segments = [self.init_segment(settings)]
+        self.segments = []
+        for setting in settings:
+            self.segments.append(self.init_segment(setting))
         self.brightness = 1.0
         self.is_enabled = True
     def init_segment(self,settings):
@@ -30,8 +32,6 @@ class LED_Driver:
 class LED_Segment:
     def __init__(self,driver,settings):
         self.driver = driver
-        for i in settings: 
-            print("{}: {}".format(i, settings[i]))
         self.pixel_min = settings['pixel_min']
         self.pixel_max = settings['pixel_max']
         self.pixel_range = self.pixel_max - self.pixel_min

@@ -118,11 +118,8 @@ DRIVER_SETTINGS = [{"name":"Segment 1",
 
 
 airlift_group = IO_Group("airlift")
-#DRIVER = led_driver.LED_Driver(DRIVER_SETTINGS)
+DRIVER = led_driver.LED_Driver(DRIVER_SETTINGS)
 
-strip = neopixel.NeoPixel(board.D7,30,brightness=1.0,auto_write=False,pixel_order=neopixel.GRBW)
-strip.fill((255,255,255))
-strip.show()
 
     
 
@@ -138,16 +135,19 @@ def main():
             for key in i.keys():
                 print("{} : {}".format(key,val))
                 print("{}".format("-"*20))
-    color_target = data.get(airlift_group.name + "."."color")
-    color_target.values()
+                if key == "airlift.color":
+                    raw = val
+                    raw = raw[1:len(raw)-1]
+                    split = raw.split(",")
+                    color_list = []
+                    for val in split:
+                        color_list.append(int(val))
+                    color_target = color_list
+    
+
     for segment in DRIVER.segments:
-        for pixel in segment.pixels:
-            pixel.color_target = color_target
-    DRIVER.tick()
-    DRIVER.draw()
-    for segment in DRIVER.segments:
-        segment.segment.fill((255,255,255,255))
-        segment.segment.show()
+        segment.neopixels.fill(color_target)
+        segment.neopixels.show()
 
 while True:
     main()    
