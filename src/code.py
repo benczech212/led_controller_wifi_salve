@@ -61,10 +61,12 @@ class IO_Group:
             for feed in self.group['feeds']:
                 self.data.append({"key":feed['key'],"val":feed['last_value']})
         self.keys = [item['key'] for item in self.data]
-        self.setting_names = []
-        for key in self.keys:
-            self.setting_names.append(key[len(self.name)+1:len(key)])
-        self.dict = dict(zip(self.keys,self,self.setting_names,self.data))
+        self.setting_names = [item['key'][len(self.name)+1:len(item['key'])] for item in self.data]
+        self.vals = []
+        for i, d in enumerate(self.data):
+            self.vals = {"setting_name":d[''}
+        
+        self.dict = dict(zip(self.keys,self.data))
         return self.data
 
     def print_setting_names(self):
