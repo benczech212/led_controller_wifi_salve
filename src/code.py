@@ -36,6 +36,8 @@ class IO_Group:
         self.name = group_name
         self.feeds = []
         self.group = None
+        self.keys = []
+        self.dict = []
 
     def pull_group(self):
         try:
@@ -53,12 +55,24 @@ class IO_Group:
         self.feeds.append({feed.key_name:feed})
 
 
-    def read_group(self):
-        data = []
+    def read_data(self):
+        self.data = []
         if self.group != None:    
             for feed in self.group['feeds']:
-                data.append({feed['key']:feed['last_value']})
-        return data
+                self.data.append({"key":feed['key'],"val":feed['last_value']})
+        self.keys = [item['key'] for item in self.data]
+        self.setting_names = []
+        for key in self.keys:
+            self.setting_names.append(key[len(self.name)+1:len(key)])
+        self.dict = dict(zip(self.keys,self,self.setting_names,self.data))
+        return self.data
+
+    def print_setting_names(self):
+        for i in self.setting_names:
+            tools.Debug_msg("{}".format(i),1)
+    def print_data(self):
+        for i in self.data:
+            tools.Debug_msg("{}: {}".format(i['key'],i['val']),1)
 
 class IO_Feed:
     def __init__(self,group,key_name):
@@ -97,6 +111,26 @@ class IO_Feed:
         else:
             return self.feed['last_value']
 
+class Effect_Manager:
+    def __init__(self,drivers, io_group):
+        self.drivers = drivers
+        self.io_group = io_group
+
+    
+
+    def tick(self):
+        pass
+
+    def set_mode(self):
+        if mode == "solid":
+            for driver in self.drivers:
+                for segment in driver.segments:
+                    for pixel in segment.pixels:
+                        pixel.color_target = self.io_group.dict['']
+
+    def set_power_state(self):
+        pass
+
 
 DRIVER_SETTINGS = [{"name":"Segment 1",
     "pixel_min":0,
@@ -117,8 +151,11 @@ DRIVER_SETTINGS = [{"name":"Segment 1",
 
 
 
-airlift_group = IO_Group("airlift")
-DRIVER = led_driver.LED_Driver(DRIVER_SETTINGS)
+AIRLIFT_GROUP = IO_Group("airlift")
+DRIVER = led_driver.LED_Driver(DRIVER_SETTINGS,AIRLIFT_GROUP)
+EFFECTS = Effect_Manager([DRIVER],AIRLIFT_GROUP)
+
+
 
 
     
@@ -126,28 +163,12 @@ DRIVER = led_driver.LED_Driver(DRIVER_SETTINGS)
 
 
 def main():
-        
-    
-    airlift_group.pull_group()
-    data = airlift_group.read_group()
-    for i in data:
-        for val in i.values():
-            for key in i.keys():
-                print("{} : {}".format(key,val))
-                print("{}".format("-"*20))
-                if key == "airlift.color":
-                    raw = val
-                    raw = raw[1:len(raw)-1]
-                    split = raw.split(",")
-                    color_list = []
-                    for val in split:
-                        color_list.append(int(val))
-                    color_target = color_list
-    
-
-    for segment in DRIVER.segments:
-        segment.neopixels.fill(color_target)
-        segment.neopixels.show()
+    AIRLIFT_GROUP.pull_group()
+    AIRLIFT_GROUP.read_data()
+    AIRLIFT_GROUP.dict['airlift.brightness']
+    DRIVER.tick()
+    DRIVER.draw()
+    DRIVER
 
 while True:
     main()    

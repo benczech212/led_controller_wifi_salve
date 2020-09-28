@@ -1,6 +1,6 @@
 data = [
-    {"airlift.power-state":"ON"},
-    {"airlift.color":"#123456"}
+    {"key":"airlift.power-state","val":"ON"},
+    {"key":"airlift.mode","val":"solid"},
 ]
 
 

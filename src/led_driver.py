@@ -8,7 +8,7 @@ DEBUG_LEVEL = 3
 class LED_Driver:
     drivers = []
     count = 0
-    def __init__(self,settings):
+    def __init__(self,settings,io_group):
         LED_Driver.drivers.append(self)
         self.id = self.count
         LED_Driver.count += 1
@@ -17,6 +17,7 @@ class LED_Driver:
             self.segments.append(self.init_segment(setting))
         self.brightness = 1.0
         self.is_enabled = True
+        self.io_group = io_group
     def init_segment(self,settings):
         return LED_Segment(self,settings)
     def draw(self):
