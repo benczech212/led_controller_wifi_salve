@@ -1,134 +1,103 @@
-import tools
-import led_driver
 import board
 import busio
-from digitalio import DigitalInOut
-from adafruit_esp32spi import adafruit_esp32spi, adafruit_esp32spi_wifimanager
 import neopixel
-from adafruit_io.adafruit_io import IO_HTTP
-try:
-    from secrets import secrets
-except ImportError:
-    print("WiFi secrets are kept in secrets.py, please add them there!")
-    raise
-try:
-    esp32_cs = DigitalInOut(board.ESP_CS)
-    esp32_ready = DigitalInOut(board.ESP_BUSY)
-    esp32_reset = DigitalInOut(board.ESP_RESET)
-except AttributeError:
-    esp32_cs = DigitalInOut(board.D9)
-    esp32_ready = DigitalInOut(board.D10)
-    esp32_reset = DigitalInOut(board.D5)
-##################
-spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
-esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
-status_light = neopixel.NeoPixel(
-    board.NEOPIXEL, 1, brightness=0.2
-) 
-wifi = adafruit_esp32spi_wifimanager.ESPSPI_WiFiManager(esp, secrets, status_light)
-
-aio_username = secrets["aio_username"]
-aio_key = secrets["aio_key"]
-io = IO_HTTP(aio_username, aio_key, wifi)
-
-class IO_Group:
-    def __init__(self,group_name):
-        self.name = group_name
-        self.feeds = []
-        self.group = None
-        self.keys = []
-        self.dict = []
-
-    def pull_group(self):
-        try:
-            self.group = io.get_group(self.name)
-        except:
-            self.error()
-            self.group = None
-        return self.group
-
-    def error(self):
-        error_lvl = 1
-        tools.Debug_msg("Error pulling group {}".format(self.name),error_lvl)
-
-    def add_feed(self,feed):
-        self.feeds.append({feed.key_name:feed})
+import tools
+#import test
+import led_driver
+import io_controller
 
 
-    def read_data(self):
-        self.data = []
-        if self.group != None:    
-            for feed in self.group['feeds']:
-                self.data.append({"key":feed['key'],"val":feed['last_value']})
-        self.keys = [item['key'] for item in self.data]
-        self.setting_names = [item['key'][len(self.name)+1:len(item['key'])] for item in self.data]
-        self.vals = []
-        for i, d in enumerate(self.data):
-            self.vals = {"setting_name":d[''}
+class Settings:
+    default_settings = {
+        "names":{}
+    }
+    def __init__(self,effect_manager):
+        self.effect_manager = effect_manager
+        self.group_name = self.effect_manager.io_group.name
+        self.tick()
         
-        self.dict = dict(zip(self.keys,self.data))
-        return self.data
 
-    def print_setting_names(self):
-        for i in self.setting_names:
-            tools.Debug_msg("{}".format(i),1)
-    def print_data(self):
-        for i in self.data:
-            tools.Debug_msg("{}: {}".format(i['key'],i['val']),1)
-
-class IO_Feed:
-    def __init__(self,group,key_name):
-        self.key_name = key_name
-        self.full_key = group.name + "." + self.key_name
-        self.data = self.pull_data()
-        self.feed = self.pull_feed()
-        self.next_value = None
-        group.add_feed(self)
-
-    def pull_feed(self):
+    def tick(self):
+        self.group_data = self.effect_manager.io_group.pull_group()
         try:
-            self.feed = io.get_feed(self.full_key)
-            return self.feed
+            self.feed_data = self.group_data['feeds']
+            self.update_dicts()
         except:
-            self.error()
+            self.feed_data = None
+        
+    
+           
+    def update_dicts(self):
+        self.keys = [item['key'] for item in self.feed_data]
+        self.names = []
+        for name in self.keys: self.names.append(name[len(self.group_name)+1:len(name)])
+        self.vals = [item['last_value'] for item in self.feed_data]
+        self.ids = [id_num for id_num in range(len(self.keys))]
 
-    def pull_data(self):
-        try:
-            self.data = io.receive_data(self.full_key)
-            return self.data
-        except:
-            self.error()
-
-    def push_data(self,data):
-        io.send_data(self.full_key, data)
-
-    def error(self):
-        tools.Debug_msg("Error pulling feed {}".format(self.full_key),1)
-            
-
-
-    def last_val(self):
-        if self.feed['last_value'] == None:
-            tools.Debug_msg("Error getting value for {}".format(self.full_key),1)
-        else:
-            return self.feed['last_value']
+        #keys
+        #ids
+        #names
+        #vals
+        self.key_to_id = dict(zip(self.keys,self.ids))
+        self.key_to_name = dict(zip(self.keys,self.names))
+        self.key_to_val = dict(zip(self.keys,self.vals))
+        self.id_to_key = dict(zip(self.ids,self.keys))
+        self.id_to_name = dict(zip(self.ids,self.names))
+        self.id_to_val = dict(zip(self.ids,self.vals))
+        self.name_to_key = dict(zip(self.names,self.keys))
+        self.name_to_id = dict(zip(self.names,self.ids))
+        self.name_to_val = dict(zip(self.names,self.vals))
+        self.val_to_key = dict(zip(self.vals,self.keys))
+        self.val_to_id = dict(zip(self.vals,self.ids))
+        self.val_to_name = dict(zip(self.vals,self.names))
+        
+    
+    
 
 class Effect_Manager:
     def __init__(self,drivers, io_group):
         self.drivers = drivers
         self.io_group = io_group
-
-    
-
+        self.settings = Settings(self)
+    def debug_settings(self):
+        try:
+            for key in self.settings.keys:
+                print(self.settings.key_to_val[key])
+        except:
+            tools.Debug_msg("Error getting settings!",1)
+            
+        
     def tick(self):
-        pass
+        in_transition = []
+        for driver in self.drivers:
+            in_transition.append(driver.in_transition)
+        if in_transition.count(True)==0:
+            self.settings.tick()
+            self.set_mode()
+
+    def set_speed(self):
+        speed_raw = self.settings.name_to_val['speed']/100
+        speed_scale = 1/20
+        speed = speed_scale*speed_raw
+        print("Speed Raw: {} | Speed Scalled {}".format(speed_raw,speed))
+        for driver in self.drivers:
+            for segment in driver.segments:
+                for pixel in segment.pixels:
+                    pixel.color_vel = [speed*4]
 
     def set_mode(self):
+        mode = self.settings.name_to_val['mode']
         if mode == "solid":
+            tools.Debug_msg("Setting mode to {}".format("solid"),1)
+            hex_color = self.settings.name_to_val['color']
+            rgb_color = led_driver.hex_to_rgb(hex_color,len(DRIVER_SETTINGS[0]['color']))
             for driver in self.drivers:
                 for segment in driver.segments:
+                    segment.in_transition=True
                     for pixel in segment.pixels:
-                        pixel.color_target = self.io_group.dict['']
+                        pixel.color_target = rgb_color
+                        
+                        
 
     def set_power_state(self):
         pass
@@ -153,24 +122,20 @@ DRIVER_SETTINGS = [{"name":"Segment 1",
 
 
 
-AIRLIFT_GROUP = IO_Group("airlift")
+AIRLIFT_GROUP = io_controller.IO_Group("airlift")
 DRIVER = led_driver.LED_Driver(DRIVER_SETTINGS,AIRLIFT_GROUP)
 EFFECTS = Effect_Manager([DRIVER],AIRLIFT_GROUP)
-
-
-
 
     
 
 
 
 def main():
-    AIRLIFT_GROUP.pull_group()
-    AIRLIFT_GROUP.read_data()
-    AIRLIFT_GROUP.dict['airlift.brightness']
-    DRIVER.tick()
-    DRIVER.draw()
-    DRIVER
+    EFFECTS.tick()
+    for i in range(120):
+        DRIVER.tick()
+        DRIVER.draw()
+
 
 while True:
     main()    

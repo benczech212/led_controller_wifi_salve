@@ -18,6 +18,7 @@ class LED_Driver:
         self.brightness = 1.0
         self.is_enabled = True
         self.io_group = io_group
+        self.in_transition = False
     def init_segment(self,settings):
         return LED_Segment(self,settings)
     def draw(self):
@@ -25,8 +26,15 @@ class LED_Driver:
             for segment in self.segments:
                 segment.draw()
     def tick(self):
+        in_transition = []
         for segment in self.segments:
             segment.tick()
+            in_transition.append(segment.in_transition)
+        if in_transition.count(True)> 0:
+            self.in_transition = True
+        else:
+            self.in_transition = False
+
 
         
         
@@ -48,6 +56,7 @@ class LED_Segment:
         self.tick_count = 0
         self.pixels = []
         self.init_pixels()
+        self.in_transition = False
 
     def init_neopixels(self, data_pin, pixel_range, brightness, auto_write, pixel_order):
         return neopixel.NeoPixel(data_pin,pixel_range,brightness=brightness,auto_write=auto_write,pixel_order=pixel_order)
@@ -57,8 +66,15 @@ class LED_Segment:
             self.pixels.append(Pixel(self,i))
 
     def tick(self):
+        in_transition = []
         for i, pixel in enumerate(self.pixels):
             pixel.tick()
+            in_transition.append(pixel.in_transition)
+        if in_transition.count(True) > 0:
+            self.in_transition = True
+        else:
+            self.in_transition = False
+
                     
 
     def draw(self):
@@ -78,15 +94,23 @@ class Pixel:
         self.segment = segment
         self.px_index = px_index
         self.color = [0,0,0,0]
+        self.color_exact = [0,0,0,0]
         self.color_target = [0,0,0,0]
         self.color_vel = [4,4,4,4]
+        self.in_transition = False
     def tick(self):
         if self.color != self.color_target:
-            self.color = step_to_color(self.color,self.color_target,self.color_vel)
+            self.in_transition = True
+            self.color_exact = step_to_color(self.color,self.color_target,self.color_vel)
+        else: 
+            self.in_transition = False
 
     def get_neopixel_color(self):
-        color = tuple(self.color)
-        return color
+        color = []
+        for i in self.color_exact:
+            color.append(int(i))
+        self.color = color
+        return tuple(color)
 
 
 def debug_msg(msg,lvl):
@@ -109,12 +133,24 @@ def step_to_color(color,color_target,color_vel):
         new_color.append(color_val)
     return new_color
 
-
+def hex_to_rgb(hex_val,channels):
+    colors = []
+    hex_val = hex_val[1:]
+    for i in range(0,6,2):
+        val = hex_val[i:i+2]
+        val = int(val,16)
+        colors.append(val)
+    for i in range(abs(len(colors)-channels)):
+        colors.append(0)
+    return colors
 
 def wheel(pos):
-    if pos < 0 or pos > 255:
-        r = g = b = 0
-    elif pos < 85:
+    while pos > 255:
+        pos -= 255
+    while pos < 255:
+        pos += 255
+
+    if pos < 85:
         r = int(pos * 3)
         g = int(255 - pos * 3)
         b = 0
@@ -129,5 +165,3 @@ def wheel(pos):
         g = int(pos * 3)
         b = int(255 - pos * 3)
     return (r, g, b, 0)
-
-

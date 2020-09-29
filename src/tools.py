@@ -11,3 +11,5 @@ class Debug_msg:
     def print(self):
         print("[{:>3}] {}".format(self.id,self.msg))
 
+def namestr(obj, namespace):
+    return [name for name in namespace if namespace[name] is obj][1:-1]
